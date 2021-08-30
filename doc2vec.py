@@ -27,7 +27,7 @@ class Doc_to_vec :
         self.doc2vec_model = Doc2Vec(vector_size=self.embedding_size, alpha=self.alpha, min_alpha=self.min_alpha, min_count=self.min_count, dm=self.dm)
         self.doc2vec_model.build_vocab(self.document)
 
-        for epoch in range(self.epochs) :
+        for epoch in range(1, self.epochs+1) :
             if epoch % 10 == 0 :
                 print('Epochs : {}'.format(epoch))
             self.doc2vec_model.train(self.document, 

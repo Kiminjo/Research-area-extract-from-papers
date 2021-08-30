@@ -1,15 +1,18 @@
-import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import nltk
-from gensim.models.doc2vec import Doc2Vec
+from nltk.corpus import stopwords
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 from sklearn.metrics.pairwise import cosine_similarity
+from datetime import datetime
 
-from doc2vec import Doc_to_vec, TaggedDocument
+from doc2vec import Doc_to_vec
+from make_network import network_draw
+
 from argparse import ArgumentParser
 import warnings 
 warnings.filterwarnings('ignore')
@@ -17,7 +20,22 @@ warnings.filterwarnings('ignore')
 
 # 이 코드 쓰실 분은 여기만 수정하시면 됩니다.
 def text_preprocessing(data) :
-    return [TaggedDocument(words=nltk.word_tokenize(word.lower()), tags=[str(index)]) for index, word in enumerate(data)]
+    tokenized_english = []
+    processed_data = []
+
+    for corpus in data :
+        tokenized_english.append(nltk.regexp_tokenize(corpus.lower(), '[A-Za-z]+'))
+
+    for cor in tokenized_english :
+        meaning_words = []
+        for word in cor :
+            if len(word) > 2 :
+                if word not in stopwords.words('english') :
+                    meaning_words.append(word)
+            
+        processed_data.append(meaning_words)
+
+    return [TaggedDocument(words=word, tags=[str(idx)]) for idx, word in enumerate(processed_data)]
 
 
 if __name__ == '__main__':
@@ -28,6 +46,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='both', help='Doc2vec type. Just train or embedding and both')
     parser.add_argument('--model', type=str, help='Call trained model')
     parser.add_argument('--save_model_name', type=str, help='Save model name')
+    parser.add_argument('--edge_threshold', type=float, default=0.98, help='edge threshold when drawing network')
     args = parser.parse_args()
 
     mode = args.mode
@@ -48,9 +67,9 @@ if __name__ == '__main__':
     ### Doc2vec abstarct embedding
 
     df = pd.read_csv(args.data)
-    data = [row['Title'] + row['Abstract'] for idx, row in df.iterrows()]
+    data = [str(row['Title']) + str(row['Abstract']) + str(row['Author Keywords']) + str(row['Index Keywords']) for _, row in df.iterrows()]
     processed_data = text_preprocessing(data)
-
+    
     if mode == 'both' :
         model = Doc_to_vec(document=processed_data, epochs=epochs, embedding_size=embedding_size, alpha=alpha, model_name=args.save_model_name)
         model.train()
@@ -69,9 +88,15 @@ if __name__ == '__main__':
         embedding_vectors = [model.infer_vector(text) for text in tokenized_text]
 
 
-    similarity_matrix = cosine_similarity(embedding_vectors, embedding_vectors)
-    print(similarity_matrix)
-    np.savetxt('network/210824_512_1.csv', similarity_matrix, delimiter=',')
+    index = [row['Authors'] + '/' + row['Title'] for _, row in df.iterrows()]
+    similarity_matrix = pd.DataFrame(cosine_similarity(embedding_vectors, embedding_vectors), columns=index, index=index)
+    for cell in range(len(similarity_matrix)) :
+        similarity_matrix.iloc[cell, cell] = 0 
+
+    now = datetime.now()
+    now = now.strftime('%m%d_%H%M_')
+    network_name = 'network/' + now+ str(int(embedding_size)) + '.csv'
+    similarity_matrix.to_csv(network_name)
 
     print('Embedding matrix size : {}'.format(np.array(embedding_vectors).shape))
     print('Doc2vec embedding complete')
@@ -91,5 +116,8 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(figsize=(16,10))
     sns.scatterplot(two_dim_embedded_vectors[:,0], two_dim_embedded_vectors[:,1], hue=clusters, palette='deep', ax=ax)
-    plt.show()
+    plt.show(block=False)
+    #plt.savefig('visualization/' + now + '_' + str(int(embedding_size)) + '.png', dpi=100)
 
+
+    network_draw(network_name=network_name, threshold=args.edge_threshold)
