@@ -2,7 +2,7 @@ from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 import nltk
 
 class Doc_to_vec :
-    def __init__(self, document, epochs=100, embedding_size=64, alpha=0.01, min_alpha=0.00025, min_count=1, dm=1, model_name=None) :
+    def __init__(self, document, epochs=100, embedding_size=64, alpha=0.01, min_alpha=0.00025, min_count=1, dm=1, window=10, model_name=None) :
         # data
         self.document = document
         #self.tagged_data = self.text_preprocessing()
@@ -14,6 +14,7 @@ class Doc_to_vec :
         self.min_alpha = min_alpha
         self.min_count = int(min_count)
         self.dm = int(dm)
+        self.window = int(window)
         self.model_name = model_name
 
     '''
