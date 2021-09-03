@@ -1,3 +1,6 @@
 epochs : 100
-embedding_size : 128
+embedding_size : 32
 alpha : 0.025
+min_alpha : 0.00025
+min_count : 5
+window : 5
