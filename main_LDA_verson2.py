@@ -4,6 +4,7 @@ Created on Mon Sep  6 14:40:13 2021
 
 @author: 82109
 """
+
 import numpy as np
 import gensim
 import pandas as pd
@@ -11,10 +12,15 @@ import nltk
 from nltk.corpus import stopwords
 from gensim import corpora
 import pickle
-
-NUM_TOPICS = 30 # 토픽갯수
-passes = 100 # 반복횟수
-now = '210907_' # 오늘날짜
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+import seaborn as sns
+NUM_TOPICS = 15 # 토픽갯수
+passes = 10 # 반복횟수
+now = '210908_' # 오늘날짜
+cluster = 15
 
 #pickle 파일 열기
 with open("data\clean_data.pickle","rb") as fr:
@@ -90,5 +96,15 @@ for i in range(len(corpus)):
     for w in ldamodel.get_document_topics(corpus[i], minimum_probability=0):
         r.append(w[1])
     simliarity_vetor.append(r)
-    
-simliarity_vetor.to_csv("유사도.csv", header= ["topic"+str(i) for i in range(1, 31)])
+E= pd.DataFrame(simliarity_vetor)
+E.to_csv("유사도(topic15).csv", header= ["topic"+str(i) for i in range(1, 16)])
+#K-means / T-sne plot 그리기
+kmeans = KMeans(n_clusters= cluster).fit(simliarity_vetor)
+clusters = kmeans.labels_
+
+TSNE_vetor = TSNE(n_components=2).fit_transform(simliarity_vetor)# component = 차원
+Q = pd.DataFrame(TSNE_vetor) # dataframe으로 변경하여 K-means cluster lavel 열 추가
+Q["clusters"] = clusters #lavel 추가
+fig, ax = plt.subplots(figsize=(16,10))
+sns.scatterplot(data = Q, x=0, y=1, hue= clusters, palette='deep')
+plt.show()
