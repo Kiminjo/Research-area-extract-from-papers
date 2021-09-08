@@ -14,7 +14,7 @@ import pickle
 
 NUM_TOPICS = 30 # 토픽갯수
 passes = 100 # 반복횟수
-now = '210906_' # 오늘날짜
+now = '210907_' # 오늘날짜
 
 #pickle 파일 열기
 with open("data\clean_data.pickle","rb") as fr:
@@ -82,3 +82,13 @@ df.to_csv(modeling_name, index=True)
 
 table_name = 'LDA_output/LDA_verson2' + now + '_' + 'epochs = ' + str(int(passes))+ '_table.csv'
 topictable.to_csv(table_name, index=True)
+
+# 문서별 토픽 유사도
+simliarity_vetor=[]
+for i in range(len(corpus)):
+    r=[]
+    for w in ldamodel.get_document_topics(corpus[i], minimum_probability=0):
+        r.append(w[1])
+    simliarity_vetor.append(r)
+    
+simliarity_vetor.to_csv("유사도.csv", header= ["topic"+str(i) for i in range(1, 31)])
