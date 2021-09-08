@@ -17,10 +17,10 @@ import seaborn as sns
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import seaborn as sns
-NUM_TOPICS = 15 # 토픽갯수
+NUM_TOPICS = 45 # 토픽갯수
 passes = 10 # 반복횟수
 now = '210908_' # 오늘날짜
-cluster = 15
+cluster = 45
 
 #pickle 파일 열기
 with open("data\clean_data.pickle","rb") as fr:
@@ -52,9 +52,22 @@ corpus = [dictionary.doc2bow(text) for text in tokenized_doc] # 코퍼스 구성
 ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics =NUM_TOPICS, id2word=dictionary, passes= passes, )
 
 # topics = 30 , words = 10
-topics = ldamodel.print_topics(num_topics= 30, num_words=10)
-
-df = pd.DataFrame(topics)
+topics = ldamodel.print_topics(num_topics=NUM_TOPICS , num_words=10)
+df_topic = pd.DataFrame(topics)
+# 영어를 제외하고 불필요 텍스트 제거
+import re
+s= []
+for word in df_topic:
+    list_par = []
+    for i in word:
+        text = re.sub('[^a-zA-Z]',' ',i).strip() # 영어제외 다 제거.
+        if(text != ''): # 영어,숫자 및 공백 제거.
+            list_par.append(text)
+    s.append(list_par)
+    
+s= pd.DataFrame(s)
+df =s.transpose()
+df.columns = ['Topic'+str(i) for i in range(1,31)]
 
 def make_topictable_per_doc(ldamodel, corpus):
     topic_table = pd.DataFrame()
@@ -83,10 +96,10 @@ topictable.columns = ['문서 번호', '가장 비중이 높은 토픽', '가장
 
            
 #LDA 모델링, 테이블 결과 저장
-modeling_name = 'LDA_output/LDA_verson2' + now + '_' + 'epochs = ' + str(int(passes))+ '_modeling.csv'
+modeling_name = 'LDA_output/' + now + '_' + 'epochs = ' + str(int(passes))+ '_modeling.csv'
 df.to_csv(modeling_name, index=True)
 
-table_name = 'LDA_output/LDA_verson2' + now + '_' + 'epochs = ' + str(int(passes))+ '_table.csv'
+table_name = 'LDA_output/' + now + '_' + 'epochs = ' + str(int(passes))+ '_table.csv'
 topictable.to_csv(table_name, index=True)
 
 # 문서별 토픽 유사도
@@ -97,7 +110,7 @@ for i in range(len(corpus)):
         r.append(w[1])
     simliarity_vetor.append(r)
 E= pd.DataFrame(simliarity_vetor)
-E.to_csv("유사도(topic15).csv", header= ["topic"+str(i) for i in range(1, 16)])
+E.to_csv("유사도(topic45).csv", header= ["topic"+str(i) for i in range(1, 16)])
 #K-means / T-sne plot 그리기
 kmeans = KMeans(n_clusters= cluster).fit(simliarity_vetor)
 clusters = kmeans.labels_
