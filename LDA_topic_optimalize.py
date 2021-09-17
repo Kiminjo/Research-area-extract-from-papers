@@ -5,14 +5,14 @@ Created on Tue Sep  7 11:19:17 2021
 @author: 82109
 """
 
-토픽의 수 최적화 모델
+#토픽의 수 최적화 모델
 from tqdm import tqdm
 from gensim.models.ldamodel import LdaModel 
 from gensim.models.callbacks import CoherenceMetric 
 from gensim import corpora 
 from gensim.models.callbacks import PerplexityMetric 
 import logging 
-
+import pickle
 from gensim.models.coherencemodel import CoherenceModel 
 import matplotlib.pyplot as plt 
 
@@ -39,14 +39,17 @@ def find_optimal_number_of_topics(dictionary, corpus, processed_data):
     plt.legend(("coherence_values"), loc='best') 
     plt.show() 
 
+#preprocessing 완료된 document pickle 파일 열기
+with open('data/preprocessing_data(2812).pickle',"rb") as fr:
+          tokenized_doc = pickle.load(fr)
 
-processed_data = tokenized_doc
-dictionary = corpora.Dictionary(processed_data) # 출현빈도가 적거나 자주 등장하는 단어는 제거 
+
+dictionary = corpora.Dictionary(tokenized_doc) # 출현빈도가 적거나 자주 등장하는 단어는 제거 
 dictionary.filter_extremes(no_below=10, no_above=0.05)
-corpus = [dictionary.doc2bow(text) for text in processed_data]
+corpus = [dictionary.doc2bow(text) for text in tokenized_doc]
 print('Number of unique tokens: %d' % len(dictionary)) 
 print('Number of documents: %d' % len(corpus))
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO) 
     
 # 최적의 토픽 수 찾기 
-find_optimal_number_of_topics(dictionary, corpus, processed_data)
+find_optimal_number_of_topics(dictionary, corpus, tokenized_doc)
