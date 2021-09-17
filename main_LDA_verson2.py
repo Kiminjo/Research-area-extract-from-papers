@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep  6 14:40:13 2021
-
-@author: 82109
-"""
-
 import numpy as np
 import gensim
 import pandas as pd
@@ -17,60 +10,52 @@ import seaborn as sns
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import seaborn as sns
-NUM_TOPICS = 45 # 토픽갯수
-passes = 10 # 반복횟수
-now = '210908_' # 오늘날짜
-cluster = 45
-
-#pickle 파일 열기
-with open("data\clean_data.pickle","rb") as fr:
-    documents = pickle.load(fr)
-
-#csv파일로 stopwords 만들기
-df = pd.read_csv(r"stopwords\universal_scientific_stopwords.csv",header = None)
-d = df[0].values
-stop_words_universal =d.tolist()
+import re
 
 
-#stop_words 추가하기
-def apply_stop_words(tokenized_text):
-    stop_words = stop_words_universal
-    result = []
-    for tok_list in tokenized_text:
-        tok_result =[]
-        for tok in tok_list:
-            if tok not in stop_words:
-                tok_result.append(tok)
-        result.append(tok_result)
-    return result    
+now = '210917_' # 오늘날짜
+file_path ='C:/Users/82109/GitHub/doc2vec/LDA_output/LDA_verson2/'
 
-tokenized_doc = apply_stop_words(documents) # 토큰화된 documents
+#preprocessing 완료된 document pickle 파일 열기
+with open('data/preprocessing_data(2812).pickle',"rb") as fr:
+          tokenized_doc = pickle.load(fr)
+
+# LDA 구현 (passes : 알고리즘 동작횟수, num_topics : 토픽 수
+
 dictionary = corpora.Dictionary(tokenized_doc) # tokenized 데이터를 통해 dictionary로 변환
 corpus = [dictionary.doc2bow(text) for text in tokenized_doc] # 코퍼스 구성
+ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics = 30, id2word=dictionary, passes= 10)
 
-# passes : 알고리즘 동작횟수, num_words : 토픽의 수
-ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics =NUM_TOPICS, id2word=dictionary, passes= passes, )
+def make_topic_model(ldamodel,num_topic,num_word):
 
-# topics = 30 , words = 10
-topics = ldamodel.print_topics(num_topics=NUM_TOPICS , num_words=10)
-df_topic = pd.DataFrame(topics)
-# 영어를 제외하고 불필요 텍스트 제거
-import re
-s= []
-for word in df_topic:
-    list_par = []
-    for i in word:
-        text = re.sub('[^a-zA-Z]',' ',i).strip() # 영어제외 다 제거.
-        if(text != ''): # 영어,숫자 및 공백 제거.
-            list_par.append(text)
-    s.append(list_par)
-    
-s= pd.DataFrame(s)
-df =s.transpose()
-df.columns = ['Topic'+str(i) for i in range(1,31)]
+    topics = ldamodel.print_topics(num_topics= num_topic, num_words= num_word)
+    df_topic = pd.DataFrame(topics)
+    #단어 토큰화 작업 및 불필요 텍스트 제거
+    tokenized_topic = [nltk.word_tokenize(doc.lower()) for doc in df_topic[1]]
+    clean_topics= []
+    for word in tokenized_topic:
+        list_par = []
+        for i in word:
+            text = re.sub('[^a-zA-Z]',' ',i).strip() # 영어제외 다 제거.
+            if(text != ''): # 영어,숫자 및 공백 제거.
+                list_par.append(text)
+        clean_topics.append(list_par)
 
-def make_topictable_per_doc(ldamodel, corpus):
-    topic_table = pd.DataFrame()
+    #DataFrame으로 틀만들어서 넣기    
+    clean_topics= pd.DataFrame(clean_topics)
+    df_topics =clean_topics.transpose()
+    df_topics.columns = ['Topic'+str(i) for i in range(1,num_topic+1)]
+                                                   
+    # LDA modeling 결과 csv 파일 저장
+    modeling_name = file_path + now+'Topic=' + str(num_topic)+ '_modeling.csv'
+    df_topics.to_csv(modeling_name, index=True)
+    print("make topic model complete!")
+ 
+make_topicmodel(ldamodel, num_topic=30, num_word=10)
+
+# Topic table 적용
+def make_topic_table(ldamodel, corpus, num_topic):
+    topictable = pd.DataFrame()
 
     # 몇 번째 문서인지를 의미하는 문서 번호와 해당 문서의 토픽 비중을 한 줄씩 꺼내온다.
     for i, topic_list in enumerate(ldamodel[corpus]):
@@ -84,40 +69,43 @@ def make_topictable_per_doc(ldamodel, corpus):
         # 모든 문서에 대해서 각각 아래를 수행
         for j, (topic_num, prop_topic) in enumerate(doc): #  몇 번 토픽인지와 비중을 나눠서 저장한다.
             if j == 0:  # 정렬을 한 상태이므로 가장 앞에 있는 것이 가장 비중이 높은 토픽
-                topic_table = topic_table.append(pd.Series([int(topic_num), round(prop_topic,10), topic_list]), ignore_index=True)
+                topictable = topictable.append(pd.Series([int(topic_num), round(prop_topic,10), topic_list]), ignore_index=True)
                 # 가장 비중이 높은 토픽과, 가장 비중이 높은 토픽의 비중과, 전체 토픽의 비중을 저장한다.
             else:
                 break
-    return(topic_table)
-
-topictable = make_topictable_per_doc(ldamodel, corpus)
-topictable = topictable.reset_index() # 문서 번호을 의미하는 열(column)로 사용하기 위해서 인덱스 열을 하나 더 만든다.
-topictable.columns = ['문서 번호', '가장 비중이 높은 토픽', '가장 높은 토픽의 비중', '각 토픽의 비중']
-
+    topictable = topictable.reset_index() # 문서 번호을 의미하는 열(column)로 사용하기 위해서 인덱스 열을 하나 더 만든다.
+    topictable.columns = ['문서 번호', '가장 비중이 높은 토픽', '가장 높은 토픽의 비중', '각 토픽의 비중']
            
-#LDA 모델링, 테이블 결과 저장
-modeling_name = 'LDA_output/' + now + '_' + 'epochs = ' + str(int(passes))+ '_modeling.csv'
-df.to_csv(modeling_name, index=True)
+    #LDA table 결과 csv 저장
+    table_name = file_path + now + 'Topic=' + str(num_topic)+ '_table.csv'
+    topictable.to_csv(table_name, index=True)
+    print("make topic table complete!")
 
-table_name = 'LDA_output/' + now + '_' + 'epochs = ' + str(int(passes))+ '_table.csv'
-topictable.to_csv(table_name, index=True)
+# 문서별 토픽 유사도+ visualizer
+def make_topic_simliarity(ladmodel,corpus,num_topic):
+    simliarity_vetor=[]
+    for i in range(len(corpus)):
+        r=[]
+        for w in ldamodel.get_document_topics(corpus[i], minimum_probability=0):
+            r.append(w[1])
+        simliarity_vetor.append(r)
+    E= pd.DataFrame(simliarity_vetor)
+    E.to_csv(file_path +now+ 'Topic='+str(num_topic)+'_simliarity.csv', header= ["topic"+str(i) for i in range(1, num_topic+1)])
+    print("make topic simliarity complete!")
+    kmeans = KMeans(n_clusters= num_topic).fit(simliarity_vetor)
+    clusters = kmeans.labels_
+    TSNE_vetor = TSNE(n_components=2).fit_transform(simliarity_vetor)# component = 차원
+    Q = pd.DataFrame(TSNE_vetor) # dataframe으로 변경하여 K-means cluster lavel 열 추가
+    Q["clusters"] = clusters #lavel 추가
+    fig, ax = plt.subplots(figsize=(16,10))
+    sns.scatterplot(data = Q, x=0, y=1, hue= clusters, palette='deep')
+    plt.show()
+    print("visualizer complete!")
 
-# 문서별 토픽 유사도
-simliarity_vetor=[]
-for i in range(len(corpus)):
-    r=[]
-    for w in ldamodel.get_document_topics(corpus[i], minimum_probability=0):
-        r.append(w[1])
-    simliarity_vetor.append(r)
-E= pd.DataFrame(simliarity_vetor)
-E.to_csv("유사도(topic45).csv", header= ["topic"+str(i) for i in range(1, 16)])
-#K-means / T-sne plot 그리기
-kmeans = KMeans(n_clusters= cluster).fit(simliarity_vetor)
-clusters = kmeans.labels_
+# 적용
 
-TSNE_vetor = TSNE(n_components=2).fit_transform(simliarity_vetor)# component = 차원
-Q = pd.DataFrame(TSNE_vetor) # dataframe으로 변경하여 K-means cluster lavel 열 추가
-Q["clusters"] = clusters #lavel 추가
-fig, ax = plt.subplots(figsize=(16,10))
-sns.scatterplot(data = Q, x=0, y=1, hue= clusters, palette='deep')
-plt.show()
+make_topic_model(ldamodel, num_topic=30, num_word=10)
+make_topic_table(ldamodel, corpus, num_topic =30)   
+make_topic_simliarity(ldamodel,corpus,num_topic= 30)
+
+
