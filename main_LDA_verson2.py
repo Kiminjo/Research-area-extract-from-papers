@@ -12,19 +12,19 @@ from sklearn.cluster import KMeans
 import seaborn as sns
 import re
 
-
-now = '210917_' # 오늘날짜
+now = '210923_' # 오늘날짜
 file_path ='C:/Users/82109/GitHub/doc2vec/LDA_output/LDA_verson2/'
 
 #preprocessing 완료된 document pickle 파일 열기
-with open('data/preprocessing_data(2812).pickle',"rb") as fr:
+with open('data/preprocessing_data(4046).pickle',"rb") as fr:
           tokenized_doc = pickle.load(fr)
 
-# LDA 구현 (passes : 알고리즘 동작횟수, num_topics : 토픽 수
+# LDA 구현 (passes = 30 iterations = 400 num_topics = 40 고정)
 
 dictionary = corpora.Dictionary(tokenized_doc) # tokenized 데이터를 통해 dictionary로 변환
+dictionary.filter_extremes(no_below=10, no_above=0.05) # 출현빈도 적거나 많으면 삭제
 corpus = [dictionary.doc2bow(text) for text in tokenized_doc] # 코퍼스 구성
-ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics = 30, id2word=dictionary, passes= 10)
+ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics = 40, id2word=dictionary, passes= 30, iterations= 400, random_state = 1004 ) 
 
 def make_topic_model(ldamodel,num_topic,num_word):
 
@@ -51,7 +51,6 @@ def make_topic_model(ldamodel,num_topic,num_word):
     df_topics.to_csv(modeling_name, index=True)
     print("make topic model complete!")
  
-make_topicmodel(ldamodel, num_topic=30, num_word=10)
 
 # Topic table 적용
 def make_topic_table(ldamodel, corpus, num_topic):
@@ -82,7 +81,7 @@ def make_topic_table(ldamodel, corpus, num_topic):
     print("make topic table complete!")
 
 # 문서별 토픽 유사도+ visualizer
-def make_topic_simliarity(ladmodel,corpus,num_topic):
+def make_topic_simliarity(ladmodel,corpus,num_topic, num_cluster):
     simliarity_vetor=[]
     for i in range(len(corpus)):
         r=[]
@@ -92,20 +91,57 @@ def make_topic_simliarity(ladmodel,corpus,num_topic):
     E= pd.DataFrame(simliarity_vetor)
     E.to_csv(file_path +now+ 'Topic='+str(num_topic)+'_simliarity.csv', header= ["topic"+str(i) for i in range(1, num_topic+1)])
     print("make topic simliarity complete!")
-    kmeans = KMeans(n_clusters= num_topic).fit(simliarity_vetor)
+    
+    kmeans = KMeans(n_clusters= num_cluster).fit(simliarity_vetor)
     clusters = kmeans.labels_
     TSNE_vetor = TSNE(n_components=2).fit_transform(simliarity_vetor)# component = 차원
     Q = pd.DataFrame(TSNE_vetor) # dataframe으로 변경하여 K-means cluster lavel 열 추가
     Q["clusters"] = clusters #lavel 추가
-    fig, ax = plt.subplots(figsize=(16,10))
+    fig, ax = plt.subplots(figsize=(24,15))
     sns.scatterplot(data = Q, x=0, y=1, hue= clusters, palette='deep')
     plt.show()
     print("visualizer complete!")
+    
+    # clsuter 별 빈도수 그래프
+    a= df["가장 비중이 높은 토픽"].value_counts()
+    ax = a.plot(kind='bar', title='Number of documents per topic', figsize=(12, 4), legend=None)
+    ax.set_xlabel('Topics', fontsize=12)          # x축 정보 표시
+    ax.set_ylabel('Number of documents', fontsize=12)     # y축 정보 표시
+    
+###########################################################################
+# 적용(LDA 구현했을 때 파라미터 동일하게 해야됨)
+make_topic_model(ldamodel, num_topic=40, num_word=10)
+make_topic_table(ldamodel, corpus, num_topic =40)   
+make_topic_simliarity(ldamodel,corpus,num_topic= 40, num_cluster = 30)
+###########################################################################
 
-# 적용
+# 빈도수 그래프
+df = pd.read_csv("C:/Users/82109/GitHub/doc2vec/LDA_output/LDA_verson2/210922_Topic=40_table.csv")
+a= df["가장 비중이 높은 토픽"].value_counts()
+ax = a.plot(kind='bar', title='Number of documents per topic', figsize=(12, 4), legend=None)
+ax.set_xlabel('Topics', fontsize=12)          # x축 정보 표시
+ax.set_ylabel('Number of documents', fontsize=12)     # y축 정보 표시
 
-make_topic_model(ldamodel, num_topic=30, num_word=10)
-make_topic_table(ldamodel, corpus, num_topic =30)   
-make_topic_simliarity(ldamodel,corpus,num_topic= 30)
+###########################################
+# clustering 빈도수 그래프
+num_topic = 40
+cluster_n = 10
+simliarity_vetor=[]
+for i in range(len(corpus)):
+    r=[]
+    for w in ldamodel.get_document_topics(corpus[i], minimum_probability=0):
+        r.append(w[1])
+    simliarity_vetor.append(r)
+E= pd.DataFrame(simliarity_vetor)
+E.to_csv(file_path +now+ 'Topic='+str(num_topic)+'_simliarity.csv', header= ["topic"+str(i) for i in range(1, num_topic+1)])
+print("make topic simliarity complete!")
+kmeans = KMeans(n_clusters= 40).fit(simliarity_vetor)
+clusters = kmeans.labels_
 
+# 빈도수 그래프
+clusters = pd.DataFrame(clusters)
+a= clusters[0].value_counts()
 
+ax = a.plot(kind='bar', title='Number of cluster', figsize=(12, 4), legend=None)
+ax.set_xlabel('Cluster', fontsize=12)          # x축 정보 표시
+ax.set_ylabel('Number of documents', fontsize=12)     # y축 정보 표시
