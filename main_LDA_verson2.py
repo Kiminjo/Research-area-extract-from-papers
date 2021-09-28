@@ -58,6 +58,10 @@ def make_topic_table(ldamodel, corpus, num_topic):
 
     # 몇 번째 문서인지를 의미하는 문서 번호와 해당 문서의 토픽 비중을 한 줄씩 꺼내온다.
     for i, topic_list in enumerate(ldamodel[corpus]):
+        print('for test')
+        print(i)
+        print(topic_list)
+        print('==============================================================')
         doc = topic_list[0] if ldamodel.per_word_topics else topic_list            
         doc = sorted(doc, key=lambda x: (x[1]), reverse=True)
         # 각 문서에 대해서 비중이 높은 토픽순으로 토픽을 정렬한다.
@@ -107,11 +111,13 @@ def make_topic_simliarity(ladmodel,corpus,num_topic, num_cluster):
     ax = a.plot(kind='bar', title='Number of documents per topic', figsize=(12, 4), legend=None)
     ax.set_xlabel('Topics', fontsize=12)          # x축 정보 표시
     ax.set_ylabel('Number of documents', fontsize=12)     # y축 정보 표시
+  
     
 ###########################################################################
 # 적용(LDA 구현했을 때 파라미터 동일하게 해야됨)
 make_topic_model(ldamodel, num_topic=40, num_word=10)
 make_topic_table(ldamodel, corpus, num_topic =40)   
+quit
 make_topic_simliarity(ldamodel,corpus,num_topic= 40, num_cluster = 30)
 ###########################################################################
 
@@ -125,7 +131,7 @@ ax.set_ylabel('Number of documents', fontsize=12)     # y축 정보 표시
 ###########################################
 # clustering 빈도수 그래프
 num_topic = 40
-cluster_n = 10
+cluster_n = 20
 simliarity_vetor=[]
 for i in range(len(corpus)):
     r=[]
@@ -135,6 +141,8 @@ for i in range(len(corpus)):
 E= pd.DataFrame(simliarity_vetor)
 E.to_csv(file_path +now+ 'Topic='+str(num_topic)+'_simliarity.csv', header= ["topic"+str(i) for i in range(1, num_topic+1)])
 print("make topic simliarity complete!")
+
+simliarity_vetor.insert(cluster,0)
 kmeans = KMeans(n_clusters= 40).fit(simliarity_vetor)
 clusters = kmeans.labels_
 
