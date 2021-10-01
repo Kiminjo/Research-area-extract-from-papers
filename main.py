@@ -24,6 +24,7 @@ def text_preprocessing(data) :
     lemma = WordNetLemmatizer()
     clean_data = []
     tokens = []
+    s_stopwords = load_stopwords()
     if (os.path.isfile(filepath)) :
         clean_data = load_clean()
     else :
@@ -33,7 +34,7 @@ def text_preprocessing(data) :
             clean_words = []
             for word in words :
                 if len(word) > 1:
-                        if word not in stopwords.words('english') :
+                        if word not in stopwords.words('english') and word not in s_stopwords :
                             clean_words.append(lemma.lemmatize(word))                     
             clean_data.append(clean_words)
         print('Preprocessing complete')
@@ -47,7 +48,11 @@ def load_clean() :
             
     return clean_data
 
-def calculate_similarity(tokenized_doc) :
+def load_stopwords() :
+    list_file = open('scientificstopwords.txt', 'r').read().split('\n')
+    return list_file
+
+def train_lda(tokenized_doc) :
     dictionary = corpora.Dictionary(tokenized_doc)
     dictionary.filter_extremes(no_below=10, no_above=0.5)
     corpus = [dictionary.doc2bow(text) for text in tokenized_doc]
@@ -58,18 +63,17 @@ def calculate_similarity(tokenized_doc) :
                                                passes = 30, 
                                                iterations = 400, 
                                                random_state = 1004)
+    print('Training complete')
     
     possibility_vector = pd.DataFrame(model[corpus])
     
     for idx in range(len(possibility_vector.columns)) :
         possibility_vector[idx] = possibility_vector[idx].apply(lambda x : x[1])
     
-    similarity_matrix = pd.DataFrame(cosine_similarity(possibility_vector, possibility_vector))
-    
-    return similarity_matrix
+    return possibility_vector
     
 if __name__ == '__main__' :
     raw_data = pd.read_csv('data/2016-2021.csv')
     data = [row['Title'] + row['Abstract'] + str(row['Author Keywords']) + str(row['Index Keywords']) for _, row in raw_data.iterrows()]
     clean_data = text_preprocessing(data)
-    similarity_matrix = calculate_similarity(clean_data)
+    train_lda(clean_data).to_csv('data/possibility_vector')
