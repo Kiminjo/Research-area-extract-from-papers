@@ -65,7 +65,7 @@ def train_lda(tokenized_doc) :
                                                random_state = 1004)
     print('Training complete')
     
-    possibility_vector = pd.DataFrame(model[corpus])
+    possibility_vector = pd.DataFrame(model.get_document_topics(corpus,minimum_probability=0))
     
     for idx in range(len(possibility_vector.columns)) :
         possibility_vector[idx] = possibility_vector[idx].apply(lambda x : x[1])
@@ -76,4 +76,4 @@ if __name__ == '__main__' :
     raw_data = pd.read_csv('data/2016-2021.csv')
     data = [row['Title'] + row['Abstract'] + str(row['Author Keywords']) + str(row['Index Keywords']) for _, row in raw_data.iterrows()]
     clean_data = text_preprocessing(data)
-    train_lda(clean_data).to_csv('data/possibility_vector')
+    train_lda(clean_data).to_csv('data/possibility_vector.csv', index=False)
