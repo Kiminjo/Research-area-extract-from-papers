@@ -146,9 +146,11 @@ simliarity_vetor.insert(cluster,0)
 kmeans = KMeans(n_clusters= 40).fit(simliarity_vetor)
 clusters = kmeans.labels_
 
+cluster = pd.read_csv("C:/Users/82109/GitHub/doc2vec/data/clustered_data.csv")
+
 # 빈도수 그래프
-clusters = pd.DataFrame(clusters)
-a= clusters[0].value_counts()
+clusters = pd.DataFrame(cluster)
+a= cluster['cluster'].value_counts()
 
 ax = a.plot(kind='bar', title='Number of cluster', figsize=(12, 4), legend=None)
 ax.set_xlabel('Cluster', fontsize=12)          # x축 정보 표시
